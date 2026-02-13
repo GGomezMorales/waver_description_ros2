@@ -66,6 +66,7 @@
 
     <xacro:property name="wheel_separation" value="123e-3" />
     <xacro:property name="wheel_radius" value="40.6e-3" />
+    <xacro:property name="wheel_width" value="42.5e-3" />
 
     <!-- WBL specifications -->
     <xacro:property name="pos_x_wbl" value="0.06538582611083985" />
@@ -105,8 +106,6 @@
 
     <!-- Lidar specifications -->
     <xacro:property name="mass_lidar" value="0.046" />
-    <xacro:property name="lidar_model" value="HLS-LFCD-LDS" />
-    <xacro:property name="lidar_link" value="lidar_link" />
     <xacro:property name="lidar_samples" value="720" />
     <xacro:property name="lidar_max_range" value="12.0" />
     <xacro:property name="lidar_min_range" value="0.03" />
@@ -122,5 +121,6 @@
     <!-- ZED X Mini Stereo Camera specifications -->
     <xacro:property name="zed_x_mini_mass" value="0.015" />
     <xacro:property name="zed_x_mini_scale" value="1 1 1" />
+    <xacro:property name="zed_x_mini_dimensions" value="0.030 0.093 0.0315" />
 
 </robot>

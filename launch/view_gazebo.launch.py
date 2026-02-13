@@ -2,49 +2,87 @@ import os
 from launch_ros.actions import Node
 from launch import LaunchDescription
 from launch.substitutions import Command
-from launch.actions import ExecuteProcess
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from ament_index_python.packages import get_package_share_directory
-from launch.actions import DeclareLaunchArgument
+from launch.substitutions import PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
+
 
 def generate_launch_description():
 
+    pkg_ros_gz_sim = FindPackageShare('ros_gz_sim')
     xacro_file = os.path.join(
         get_package_share_directory('waver_description'),
         'urdf',
         'waver.xacro'
     )
-
-    # Load the URDF file (change to xacro if needed)
-    # doc = xacro.process_file(xacro_file)
-    # robot_desc = doc.toprettyxml(indent='  ')
+    ros_gz_bridge_config = os.path.join(
+        get_package_share_directory('waver_description'),
+        'config',
+        'ros_gz_bridge.yaml'
+    )
+    world = os.path.join(
+        get_package_share_directory('waver_description'),
+        'worlds',
+        'room.sdf'
+    )
 
     # Robot State Publisher
-    robot_state_publisher = Node(package='robot_state_publisher',
-                                 executable='robot_state_publisher',
-                                 name='robot_state_publisher',
-                                 output='both',
-                                 parameters=[{
-                                     'robot_description': Command(['xacro ', xacro_file])
-                                     }])
+    robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        name='robot_state_publisher',
+        output='both',
+        parameters=[
+            {'robot_description': Command(['xacro ', xacro_file])}]
+    )
 
-    # Spawn the robot in Gazebo
-    spawn_entity_robot = Node(package='gazebo_ros',
-                              executable='spawn_entity.py',
-                              arguments=['-entity', 'waver', '-topic', 'robot_description'],
-                              output='screen')
-
-    # Start Gazebo with my empty world
-    world = os.path.join(get_package_share_directory('waver_description'), 'worlds', 'world.world')
-    gazebo_node = ExecuteProcess(
-        cmd=['gazebo', '--verbose', world,
-            '-s', 'libgazebo_ros_init.so',
-            '-s', 'libgazebo_ros_factory.so'],
+    # Joint State Publisher
+    joint_state_publisher = Node(
+        package='joint_state_publisher',
+        executable='joint_state_publisher',
         output='screen'
     )
 
+    # Spawn the robot in Gazebo
+    spawn_entity_robot = Node(
+        package='ros_gz_sim',
+        executable='create',
+        arguments=[
+            '-name', 'waver', '-topic', 'robot_description'],
+        output='screen'
+    )
+
+    # Start Gazebo Sim Fortress (New Version)
+    gz_sim_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution(
+                [pkg_ros_gz_sim, 'launch', 'gz_sim.launch.py'])
+        ),
+        launch_arguments={
+            'gz_args': ['-r -v 4 ', world]
+        }.items(),
+    )
+
+    # Start Gazebo ROS Bridge
+    gz_bridge = Node(
+        package='ros_gz_bridge',
+        executable='parameter_bridge',
+        name='gz_bridge',
+        output='screen',
+        parameters=[{
+            'config_file': ros_gz_bridge_config
+        }]
+    )
+
     return LaunchDescription([
-        DeclareLaunchArgument('use_sim_time', default_value='true', description='Use simulation (Gazebo) clock'),
-        robot_state_publisher, 
-        spawn_entity_robot, 
-        gazebo_node
-        ])
+        DeclareLaunchArgument(
+            'use_sim_time', default_value='false', description='Use simulation (Gazebo) clock'
+        ),
+        robot_state_publisher,
+        joint_state_publisher,
+        spawn_entity_robot,
+        gz_sim_node,
+        gz_bridge
+    ])
